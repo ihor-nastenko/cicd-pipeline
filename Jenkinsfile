@@ -33,13 +33,11 @@ pipeline {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'main') {
-                        env.IMAGE_NAME = 'nodemain'
-                        env.CONTAINER_NAME = 'nodemain'
-                        env.HOST_PORT = '3000'
+                        env.IMAGE_NAME = 'ihor8nastenko8devops/nodemain'
+                        env.DEPLOY_JOB = 'Deploy_to_main'
                     } else if (env.BRANCH_NAME == 'dev') {
-                        env.IMAGE_NAME = 'nodedev'
-                        env.CONTAINER_NAME = 'nodedev'
-                        env.HOST_PORT = '3001'
+                        env.IMAGE_NAME = 'ihor8nastenko8devops/nodedev'
+                        env.DEPLOY_JOB = 'Deploy_to_dev'
                     } else {
                         error "Unsupported branch: ${env.BRANCH_NAME}"
                     }
@@ -49,16 +47,36 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Push Docker Image') {
             steps {
-                sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${HOST_PORT}:3000 \
-                        ${IMAGE_NAME}:${IMAGE_TAG}
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login \
+                            -u "$DOCKER_USER" \
+                            --password-stdin
+
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+"""
+        stage('Trigger Deployment') {
+            steps {
+                script {
+                    build job: env.DEPLOY_JOB,
+                        parameters: [
+                            string(name: 'IMAGE_TAG', value: env.IMAGE_TAG)
+                        ]
+                }
             }
         }
     }
 }
+"""
