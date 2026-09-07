@@ -66,10 +66,6 @@ pipeline {
                 }
             }
         }
-    }
-}
-
-"""
         stage('Trigger Deployment') {
             steps {
                 script {
@@ -80,5 +76,5 @@ pipeline {
                 }
             }
         }
-"""
-
+    }
+}
